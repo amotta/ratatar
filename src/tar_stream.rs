@@ -55,8 +55,7 @@ pub fn index<T: Write>(mut out: T) -> Result<()> {
 
                             // prepare for next entry
                             let skip_len = match result {
-                                Ok((_, ProcState::SkipFileContent(len))) =>
-                                    tar::bytes_to_blocks(len) * tar::BLOCK_SIZE,
+                                Ok((_, ProcState::SkipFileContent(len))) => len,
                                 _ => 0
                             };
 
@@ -162,7 +161,10 @@ fn parse_header<T: Write>(
             }
 
             match type_flag {
-                tar::TypeFlag::RegularFile => ProcState::SkipFileContent(file_len),
+                tar::TypeFlag::RegularFile => {
+                    let skip_len = tar::bytes_to_blocks(file_len) * tar::BLOCK_SIZE;
+                    ProcState::SkipFileContent(skip_len)
+                },
                 _ => ProcState::ParseHeader
             }
         }
@@ -175,10 +177,8 @@ fn skip_file_contents(buf: &[u8], len: usize) -> Result<(usize, ProcState)> {
     let skip_len = min(len, buf.len());
 
     if skip_len < len {
-        let remain_len = len - skip_len;
-        Ok((skip_len, ProcState::SkipFileContent(remain_len)))
+        Ok((skip_len, ProcState::SkipFileContent(len - skip_len)))
     } else {
-        let skip_len = tar::bytes_to_blocks(skip_len) * tar::BLOCK_SIZE;
         Ok((skip_len, ProcState::ParseHeader))
     }
 }
