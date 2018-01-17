@@ -65,7 +65,7 @@ pub fn index<T: Write>(mut out: T) -> Result<()> {
 
                             result
                         },
-                        ProcState::SkipFileContent(len) => skip_file_contents(buf, len),
+                        ProcState::SkipFileContent(len) => skip_file_content(buf, len),
                         ProcState::ReadLongName(len) => read_long_name(buf, len, &mut long_name),
                         ProcState::EndOfArchive => end_of_archive(buf),
                         ProcState::Done => return Ok(())
@@ -173,7 +173,7 @@ fn parse_header<T: Write>(
     Ok((tar::BLOCK_SIZE, next_proc_state))
 }
 
-fn skip_file_contents(buf: &[u8], len: usize) -> Result<(usize, ProcState)> {
+fn skip_file_content(buf: &[u8], len: usize) -> Result<(usize, ProcState)> {
     let skip_len = min(len, buf.len());
 
     if skip_len < len {
