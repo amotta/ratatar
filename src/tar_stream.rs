@@ -29,14 +29,21 @@ pub fn index<T: Write>(mut stdout: T) -> Result<()> {
     loop {
         let consumed = match stdin.fill_buf() {
             Ok(stdin_buf) => {
-                let mut buf_off: usize = 0;
+                let stdin_offset = offset;
                 let mut long_name_slice = None;
 
-                while stdin_buf.len() - buf_off >= tar::BLOCK_SIZE {
+                let consumed = loop {
+                    let consumed = offset - stdin_offset;
+                    let buf = &stdin_buf[consumed..];
+
+                    if buf.len() < tar::BLOCK_SIZE {
+                        // need more data to continue
+                        break consumed;
+                    }
+
                     match proc_state {
                         ProcState::ParseHeader => {
-                            let buf = &stdin_buf[buf_off..(buf_off + tar::BLOCK_SIZE)];
-                            buf_off += tar::BLOCK_SIZE;
+                            offset += tar::BLOCK_SIZE;
 
                             // check format
                             let format = tar::parse_format(buf);
@@ -80,7 +87,7 @@ pub fn index<T: Write>(mut stdout: T) -> Result<()> {
                                             len = len - 1;
                                         }
 
-                                        let rat_data_begin = offset + buf_off;
+                                        let rat_data_begin = offset;
                                         let rat_data_end = rat_data_begin + file_len;
 
                                         let rat_etype = match type_flag {
@@ -114,7 +121,7 @@ pub fn index<T: Write>(mut stdout: T) -> Result<()> {
                                             ProcState::SkipFileContent(file_blocks * tar::BLOCK_SIZE)
                                         },
                                         _ => {
-                                            rat_header_begin = offset + buf_off;
+                                            rat_header_begin = offset;
                                             ProcState::ParseHeader
                                         }
                                     }
@@ -122,30 +129,30 @@ pub fn index<T: Write>(mut stdout: T) -> Result<()> {
                             }
                         },
                         ProcState::SkipFileContent(len) => {
-                            let skip_len = min(len, stdin_buf.len() - buf_off);
-                            buf_off += skip_len;
+                            let skip_len = min(len, buf.len());
+                            offset += skip_len;
 
                             if skip_len < len {
                                 proc_state = ProcState::SkipFileContent(len - skip_len);
                             } else {
-                                rat_header_begin = offset + buf_off;
+                                rat_header_begin = offset;
                                 proc_state = ProcState::ParseHeader;
                             }
                         },
                         ProcState::ReadLongName(len) => {
-                            let skip_len = min(len, stdin_buf.len() - buf_off);
-                            long_name_slice = Some(&stdin_buf[buf_off..(buf_off + skip_len)]);
+                            let skip_len = min(len, buf.len());
+                            long_name_slice = Some(&buf[..skip_len]);
 
                             if skip_len < len {
                                 proc_state = ProcState::ReadLongName(len - skip_len);
-                                buf_off += skip_len;
+                                offset += skip_len;
                             } else {
                                 proc_state = ProcState::ParseHeader;
-                                buf_off += tar::bytes_to_blocks(skip_len) * tar::BLOCK_SIZE;
+                                offset += tar::bytes_to_blocks(skip_len) * tar::BLOCK_SIZE;
                             }
                         },
                         ProcState::EndOfArchive => {
-                            let buf = &stdin_buf[buf_off..(buf_off + tar::BLOCK_SIZE)];
+                            let buf = &buf[..tar::BLOCK_SIZE];
 
                             if buf.iter().all(|b| *b == 0) {
                                 return Ok(());
@@ -154,14 +161,14 @@ pub fn index<T: Write>(mut stdout: T) -> Result<()> {
                             }
                         }
                     }
-                }
+                };
 
                 // If `long_path_slice` is set, it must be added to the buffer.
                 if let Some(s) = long_name_slice {
                     long_name_buf.extend_from_slice(s);
                 }
 
-                buf_off
+                consumed
             },
             Err(_) => return Err("Failed to fill input buffer".into())
         };
