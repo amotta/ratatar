@@ -1,6 +1,6 @@
 use std::{cmp, env, process};
 use std::fs::File;
-use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
+use std::io::{self, BufRead, BufReader, Read, Seek, SeekFrom, Write};
 
 mod index;
 mod tar;
@@ -105,7 +105,11 @@ fn main() {
 
     let res = match subcommand {
         Some(c) => match c.as_ref() {
-            "index" => tar_stream::index(),
+            "index" => {
+                let stdout_handle = io::stdout();
+                let stdout = stdout_handle.lock();
+                tar_stream::index(stdout)
+            },
             "extract" => extract(&mut args),
             "help" => Ok(help()),
             _ => Ok(help())

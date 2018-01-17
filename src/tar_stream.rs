@@ -14,12 +14,9 @@ enum ProcState {
     EndOfArchive
 }
 
-pub fn index() -> Result<()> {
+pub fn index<T: Write>(mut stdout: T) -> Result<()> {
     let stdin_handle = io::stdin();
     let mut stdin = stdin_handle.lock();
-
-    let stdout_handle = io::stdout();
-    let mut stdout = stdout_handle.lock();
 
     // buffers
     let mut long_name_buf = Vec::with_capacity(tar::BLOCK_SIZE);
