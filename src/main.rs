@@ -4,9 +4,10 @@ use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
 
 mod index;
 mod tar;
+mod tar_stream;
 mod util;
 
-use index::{index, parse_entry_type, EntryType};
+use index::{parse_entry_type, EntryType};
 use util::{from_hex, Result};
 
 fn help() {
@@ -104,7 +105,7 @@ fn main() {
 
     let res = match subcommand {
         Some(c) => match c.as_ref() {
-            "index" => index(),
+            "index" => tar_stream::index(),
             "extract" => extract(&mut args),
             "help" => Ok(help()),
             _ => Ok(help())
