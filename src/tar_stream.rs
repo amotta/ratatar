@@ -86,7 +86,6 @@ pub fn index<T: Write>(mut out: T) -> Result<()> {
         };
 
         stdin.consume(consumed);
-        offset += consumed;
     }
 }
 
