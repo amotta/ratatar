@@ -1,27 +1,7 @@
+use std::error;
 use std::result;
-use std::fmt;
 
-pub struct Error(String);
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl From<String> for Error {
-    fn from(err: String) -> Error {
-        Error(err)
-    }
-}
-
-impl<'a> From<&'a str> for Error {
-    fn from(err: &'a str) -> Error {
-        Error(err.into())
-    }
-}
-
-pub type Result<T> = result::Result<T, Error>;
+pub type Result<T> = result::Result<T, Box<error::Error>>;
 
 pub fn from_hex(data: &str) -> Result<usize> {
     let mut hex: usize = 0;

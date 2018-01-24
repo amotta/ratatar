@@ -1,7 +1,8 @@
 use std::str;
 use std::fmt;
-
-use util::Result;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use util::{from_hex, Result};
 
 #[derive(Debug, PartialEq)]
 pub enum EntryType {
@@ -18,7 +19,7 @@ impl fmt::Display for EntryType {
     }
 }
 
-pub fn parse_entry_type(data: &str) -> Result<EntryType> {
+fn parse_entry_type(data: &str) -> Result<EntryType> {
     match data {
         "F" => Ok(EntryType::File),
         "D" => Ok(EntryType::Directory),
@@ -43,4 +44,33 @@ impl<'a> fmt::Display for Entry<'a> {
             self.header_begin, self.data_begin,
             self.data_end, self.etype, self.name)
     }
+}
+
+pub fn read_entry_line(index_path: &str, entry_name: &str) -> Result<String> {
+    let index_file = File::open(index_path.to_owned())
+        .or(Err(format!("Failed to open index file '{}'", index_path)))?;
+    let index_reader = BufReader::new(index_file);
+
+    let mut entry_line = None;
+    for maybe_line in index_reader.lines() {
+        let line = maybe_line?;
+        if line.ends_with(entry_name) {
+            entry_line = Some(line);
+        }
+    }
+
+    entry_line.ok_or(format!(
+        "No entry for '{}' in index file", entry_name).into())
+}
+
+pub fn parse_entry_line(entry_line: &str) -> Result<(usize, usize, EntryType)> {
+    // split at white space and skip header address
+    let mut entry_parts = entry_line.split_whitespace().skip(1);
+
+    // extract fields
+    let data_begin = from_hex(entry_parts.next().unwrap()).unwrap();
+    let data_end = from_hex(entry_parts.next().unwrap()).unwrap();
+    let etype = parse_entry_type(entry_parts.next().unwrap()).unwrap();
+
+    Ok((data_begin, data_end, etype))
 }
