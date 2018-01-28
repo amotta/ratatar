@@ -46,7 +46,8 @@ where I: Iterator<Item = String> {
 
     let mut tar_file = File::open(tar_path.to_owned())
         .or(Err(format!("Failed to open '{}'", &tar_path)))?;
-    tar_file.seek(SeekFrom::Start(data_begin as u64)).unwrap();
+    tar_file.seek(SeekFrom::Start(data_begin as u64))
+        .or(Err(format!("Failed to seek to offset {}", data_begin)))?;
 
     let len = data_end - data_begin;
 
