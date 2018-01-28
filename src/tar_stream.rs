@@ -108,7 +108,7 @@ fn parse_header<T: Write>(
     // decide what to do next
     let next_proc_state = match type_flag {
         tar::TypeFlag::Unsupported(_) => {
-            return Err("Encountered unsupported TAR block".into());
+            return Err("Encountered unsupported tar block".into());
         },
         tar::TypeFlag::GnuLongPathName => {
             let long_name_len = tar::parse_size(buf)?;
