@@ -1,10 +1,28 @@
 use std::cmp;
 use std::fs::File;
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::io::{self, Read, Seek, SeekFrom, Write};
 use index::{self, EntryType};
 use util::Result;
 
 const COPY_BUF_SIZE: usize = 8192;
+
+pub fn extract_file_to<R, W>(
+    mut reader: R, mut writer: W, mut len: usize
+) -> Result<()>
+where R: Read, W: Write {
+    let mut buf = [0u8; COPY_BUF_SIZE];
+
+    while len > 0 {
+        let read_len = cmp::min(len, buf.len());
+        reader.read_exact(&mut buf[..read_len])
+            .or(Err("Failed to read from tar file"))?;
+        writer.write(&buf[..read_len])
+            .or(Err("Failed to write to output"))?;
+        len = len - read_len;
+    }
+
+    Ok(())
+}
 
 pub fn extract<I>(args: &mut I) -> Result<()>
 where I: Iterator<Item = String> {
@@ -28,21 +46,17 @@ where I: Iterator<Item = String> {
 
     let mut tar_file = File::open(tar_path.to_owned())
         .or(Err(format!("Failed to open '{}'", &tar_path)))?;
-    let mut out_file = File::create(out_path.to_owned())
-        .or(Err(format!("Failed to create '{}'", &out_path)))?;;
-
-    let mut buf = [0u8; COPY_BUF_SIZE];
-    let mut remain_len = data_end - data_begin;
-
-    // skip to file content
     tar_file.seek(SeekFrom::Start(data_begin as u64)).unwrap();
 
-    while remain_len > 0 {
-        let read_len = cmp::min(remain_len, buf.len());
-        tar_file.read_exact(&mut buf[..read_len]).unwrap();
-        out_file.write(&buf[..read_len]).unwrap();
-        remain_len = remain_len - read_len;
-    }
+    let len = data_end - data_begin;
 
-    Ok(())
+    if out_path == "-" {
+        let stdout_handle = io::stdout();
+        let stdout = stdout_handle.lock();
+        extract_file_to(tar_file, stdout, len)
+    } else {
+        let out_file = File::create(out_path.to_owned())
+            .or(Err(format!("Failed to create '{}'", &out_path)))?;
+        extract_file_to(tar_file, out_file, len)
+    }
 }
