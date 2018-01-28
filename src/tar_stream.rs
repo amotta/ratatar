@@ -121,13 +121,14 @@ fn parse_header<T: Write>(
             };
 
             {
-                let file_name = if long_name.is_some() {
-                    long_name.unwrap()
-                } else if !state.long_name.is_empty() {
-                    state.long_name.as_slice()
-                } else {
-                    tar::parse_name(buf)
-                };
+                let file_name =
+                    if let Some(long_name) = long_name {
+                        long_name
+                    } else if !state.long_name.is_empty() {
+                        state.long_name.as_slice()
+                    } else {
+                        tar::parse_name(buf)
+                    };
 
                 let mut len = file_name.len();
                 while len > 0 && file_name[len - 1] == 0 {
