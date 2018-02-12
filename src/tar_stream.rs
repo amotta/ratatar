@@ -68,11 +68,14 @@ pub fn index<T: Write>(mut out: T) -> Result<()> {
                         ProcState::SkipFileContent(len) => skip_file_content(buf, len),
                         ProcState::ReadLongName(len) => read_long_name(buf, len, &mut long_name),
                         ProcState::EndOfArchive => end_of_archive(buf),
-                        ProcState::Done => return Ok(())
+                        ProcState::Done => unreachable!()
                     }?;
 
                     offset += consumed;
-                    proc_state = next_proc_state;
+                    proc_state = match next_proc_state {
+                        ProcState::Done => return Ok(()),
+                        next_proc_state => next_proc_state
+                    };
                 };
 
                 // If `long_path_slice` is set, it must be added to the buffer.
