@@ -63,14 +63,22 @@ pub fn read_entry_line(index_path: &str, entry_name: &str) -> Result<String> {
         "No entry for '{}' in index file", entry_name).into())
 }
 
-pub fn parse_entry_line(entry_line: &str) -> Result<(usize, usize, EntryType)> {
+pub fn parse_entry_line(entry_line: &str) -> Result<Entry> {
     // split at white space and skip header address
-    let mut entry_parts = entry_line.split_whitespace().skip(1);
+    let mut entry_parts = entry_line.splitn(5, ' ');
 
     // extract fields
+    let header_begin = from_hex(entry_parts.next().unwrap()).unwrap();
     let data_begin = from_hex(entry_parts.next().unwrap()).unwrap();
     let data_end = from_hex(entry_parts.next().unwrap()).unwrap();
     let etype = parse_entry_type(entry_parts.next().unwrap()).unwrap();
+    let name = entry_parts.next().unwrap();
 
-    Ok((data_begin, data_end, etype))
+    Ok(Entry {
+        header_begin: header_begin,
+        data_begin: data_begin,
+        data_end: data_end,
+        etype: etype,
+        name: name
+    })
 }

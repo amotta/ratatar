@@ -37,19 +37,19 @@ where I: Iterator<Item = String> {
     };
 
     let index_entry_line = index::read_entry_line(&index_path, &entry_name)?;
-    let (data_begin, data_end, etype) = index::parse_entry_line(&index_entry_line)?;
+    let entry = index::parse_entry_line(&index_entry_line)?;
 
-    if etype != EntryType::File {
+    if entry.etype != EntryType::File {
         return Err(format!("Entry '{}' is not a file \
             and thus cannot be extracted", &entry_name).into())
     }
 
     let mut tar_file = File::open(tar_path.to_owned())
         .or(Err(format!("Failed to open '{}'", &tar_path)))?;
-    tar_file.seek(SeekFrom::Start(data_begin as u64))
-        .or(Err(format!("Failed to seek to offset {}", data_begin)))?;
+    tar_file.seek(SeekFrom::Start(entry.data_begin as u64))
+        .or(Err(format!("Failed to seek to offset {}", entry.data_begin)))?;
 
-    let len = data_end - data_begin;
+    let len = entry.data_end - entry.data_begin;
 
     if out_path == "-" {
         let stdout_handle = io::stdout();
